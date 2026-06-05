@@ -20,7 +20,7 @@ env/
 # Data (generated)
 data/raw/
 data/processed/
-data/vectordb/
+# Note: data/vectordb/ is tracked so Railway/deployment has the embeddings
 
 # OS
 .DS_Store
