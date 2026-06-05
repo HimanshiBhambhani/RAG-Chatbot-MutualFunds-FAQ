@@ -1,0 +1,51 @@
+name: Daily Ingestion
+
+on:
+  schedule:
+    # 10:00 AM IST = 04:30 UTC (IST is UTC+5:30)
+    - cron: '30 4 * * *'
+  workflow_dispatch:  # Manual trigger from GitHub UI
+
+env:
+  GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+  GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+  EMBEDDING_PROVIDER: gemini
+  GEMINI_EMBEDDING_MODEL: models/gemini-embedding-001
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run daily ingestion
+        run: python -m backend.scheduler.daily_ingest --now
+
+      - name: Upload scrape logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ingestion-logs-${{ github.run_number }}
+          path: data/raw/
+          retention-days: 7
+
+      - name: Commit updated vector DB
+        if: success()
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          git add data/vectordb/ data/raw/ data/chunks/
+          git diff --staged --quiet || git commit -m "chore: daily ingestion $(date -u +%Y-%m-%d)"
+          git push
