@@ -7,7 +7,7 @@ import Sidebar from "@/components/Sidebar";
 import ChatInput from "@/components/ChatInput";
 import ChatMessage from "@/components/ChatMessage";
 import ExampleQuestions from "@/components/ExampleQuestions";
-import { sendMessage, getCategories, Category, ChatResponse } from "@/lib/api";
+import { sendMessage, getCategories, Category, ChatResponse, HistoryMessage } from "@/lib/api";
 
 interface Message {
   id: string;
@@ -56,8 +56,14 @@ export default function Home() {
     setMessages((prev) => [...prev, userMsg]);
     setIsLoading(true);
 
+    // Build conversation history from existing messages (exclude the message just added)
+    const history: HistoryMessage[] = messages.map((msg) => ({
+      role: msg.role === "user" ? "user" : "bot",
+      content: msg.content,
+    }));
+
     try {
-      const response = await sendMessage(text);
+      const response = await sendMessage(text, history);
       const botMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: "bot",

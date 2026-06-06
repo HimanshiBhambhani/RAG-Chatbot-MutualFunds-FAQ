@@ -1,4 +1,6 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// In production with Vercel rewrites, use relative path (empty string).
+// Locally or when NEXT_PUBLIC_API_URL is set, use that URL.
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 export interface ChatResponse {
   answer: string;
@@ -21,11 +23,19 @@ export interface Category {
   funds: CategoryFund[];
 }
 
-export async function sendMessage(query: string): Promise<ChatResponse> {
+export interface HistoryMessage {
+  role: "user" | "bot";
+  content: string;
+}
+
+export async function sendMessage(
+  query: string,
+  history: HistoryMessage[] = []
+): Promise<ChatResponse> {
   const res = await fetch(`${API_BASE}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query }),
+    body: JSON.stringify({ query, history }),
   });
 
   if (!res.ok) {

@@ -55,12 +55,13 @@ class RAGChain:
             f"top_k={top_k}, rerank={use_rerank})"
         )
 
-    def query(self, question: str) -> dict:
+    def query(self, question: str, history: list[dict] = None) -> dict:
         """
         Process a user question through the full RAG pipeline with guardrails.
 
         Args:
             question: User's natural language question.
+            history: Optional list of prior messages [{"role": "user"|"bot", "content": "..."}]
 
         Returns:
             Dict with keys:
@@ -71,6 +72,8 @@ class RAGChain:
                 - chunks_used: Number of chunks used for context
                 - blocked_by: (optional) Guardrail that blocked the query
         """
+        if history is None:
+            history = []
         # ── Pre-query Guardrail 1: PII Detection ──
         if contains_pii(question):
             logger.warning("Query blocked by PII detector")
@@ -113,7 +116,7 @@ class RAGChain:
         else:
             last_updated = "Unknown"
 
-        # Step 5: Build messages for LLM
+        # Step 5: Build messages for LLM (with conversation history)
         system_prompt = SYSTEM_PROMPT.format(last_updated=last_updated)
         user_prompt = USER_PROMPT_TEMPLATE.format(
             context=context,
@@ -122,8 +125,15 @@ class RAGChain:
 
         messages = [
             {"role": "system", "content": system_prompt},
-            {"role": "human", "content": user_prompt},
         ]
+
+        # Inject conversation history (last 10 exchanges max to stay within token limits)
+        for msg in history[-20:]:
+            role = "human" if msg["role"] == "user" else "ai"
+            messages.append({"role": role, "content": msg["content"]})
+
+        # Current user query with retrieved context
+        messages.append({"role": "human", "content": user_prompt})
 
         # Step 6: Generate response
         try:
