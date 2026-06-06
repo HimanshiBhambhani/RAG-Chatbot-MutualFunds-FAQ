@@ -1,0 +1,10 @@
+frontend/
+venv/
+.venv/
+__pycache__/
+data/raw/
+data/processed/
+stitch/
+Docs/
+tests/
+.github/
